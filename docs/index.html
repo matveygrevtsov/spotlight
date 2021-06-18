@@ -1,0 +1,136 @@
+<html>
+
+<head>
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+		}
+
+		#canvas {
+			background: black;
+		}
+
+		#source {
+			display: none;
+		}
+	</style>
+</head>
+
+<body>
+	<canvas id="canvas"></canvas>
+	<img id="source" src="img/tinkoff_logo.svg">
+
+
+	<script>
+		const pointInSegment = (segmentStart, segmentEnd, point) => {
+			if (segmentStart === segmentEnd) {
+				return (segmentStart === point)
+			}
+			if (segmentStart > segmentEnd) {
+				return (point >= segmentEnd && point <= segmentStart)
+			}
+			return (point >= segmentStart && point <= segmentEnd)
+		}
+
+		const randomFromInterval = (interval) =>
+			Math.random() * (interval[1] - interval[0]) + interval[0]
+
+		class Spotlight {
+			constructor(speed, canvasRef) {
+				this.speed = speed
+				this.canvas = canvasRef
+				Spotlight.period = 0
+				this.t = 0
+			}
+
+			isInsideRectangle() {
+				return pointInSegment(this.x0, this.x1, this.x) && pointInSegment(this.y0, this.y1, this.y)
+			}
+
+			incrementTime() {
+				this.t += (this.speed * Spotlight.period) / 1000
+			}
+
+			calculateСoordinates() {
+				this.x = this.center_x + this.contourSize / 4 * Math.cos(this.t)
+				this.y = this.center_y + this.contourSize / 4 * Math.sin(this.t)
+				this.incrementTime()
+			}
+			render(x0, y0, x1, y1) {
+				this.x0 = x0
+				this.y0 = y0
+				this.x1 = x1
+				this.y1 = y1
+				this.center_x = x0 + (x1 - x0) / 2
+				this.center_y = y0 + (y1 - y0) / 2
+				this.contourSize = Math.abs(x1 - x0)
+				this.calculateСoordinates()
+				const context = this.canvas.getContext('2d')
+				const gradient = context.createRadialGradient(this.x, this.y, this.contourSize, this.x, this.y, 0);
+				context.save()
+				gradient.addColorStop(0, 'black'); // цвет окружения
+				gradient.addColorStop(0.5, 'black'); // цвет начала градиента
+				gradient.addColorStop(1, 'transparent'); // цвет конца градиента
+				context.fillStyle = gradient;
+				context.fillRect(x0, y0, this.contourSize, this.contourSize);
+				context.restore()
+			}
+		}
+
+	</script>
+
+	<script>
+
+		const getPeriodCalculator = () => {
+			let prevTimestamp = 0
+			return (timestamp) => {
+				const res = timestamp < 500 ? 0 : timestamp - prevTimestamp
+				prevTimestamp = timestamp
+				return res
+			}
+		}
+
+		const periodCalculator = getPeriodCalculator()
+
+		window.onload = function () {
+			const canvas = document.getElementById("canvas");
+			const context = canvas.getContext("2d");
+			const img = document.getElementById("source");
+			const imgSize = 300;
+			let x0
+			let y0
+			setCanvasSize()
+
+			function setCanvasSize() {
+				canvas.width = document.body.clientWidth;
+				canvas.height = document.body.clientHeight;
+				x0 = canvas.width / 2;
+				y0 = canvas.height / 2;
+				context.drawImage(img, x0 - imgSize / 2, y0 - imgSize / 2, imgSize, imgSize);
+			}
+
+			window.addEventListener("resize", setCanvasSize);
+
+			const spotlight = new Spotlight(1, canvas)
+
+			const tick = (timestamp) => {
+				Spotlight.period = periodCalculator(timestamp)
+
+				context.clearRect(
+					0,
+					0,
+					canvas.width,
+					canvas.height,
+				)
+				context.drawImage(img, x0 - imgSize / 2, y0 - imgSize / 2, imgSize, imgSize);
+				spotlight.render(x0 - imgSize / 2, y0 - imgSize / 2, x0 + imgSize / 2, y0 + imgSize / 2)
+				this.requestAnimation = requestAnimationFrame(tick)
+			}
+			this.requestAnimation = requestAnimationFrame(tick)
+
+		}
+	</script>
+</body>
+
+</html>
